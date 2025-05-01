@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Sharing App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #f1f8e9);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #00796b;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .icon {
+            font-size: 60px;
+            color: #26a69a;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            padding: 15px;
+            border: 2px dashed #80cbc4;
+            background-color: #f1f8e9;
+            border-radius: 10px;
+            width: 100%;
+            margin: 20px 0;
+            box-sizing: border-box;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        button {
+            background-color: #00796b;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #004d40;
+        }
+
+        button:disabled {
+            background-color: #b0bec5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 20px;
+            font-size: 16px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .download-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #388e3c;
+            text-decoration: none;
+        }
+
+        .download-link:hover {
+            text-decoration: underline;
+        }
+
+        .file-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .file-list h3 {
+            color: #00796b;
+            text-transform: uppercase;
+            font-size: 18px;
+        }
+
+        .file-list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .file-list li {
+            margin: 10px 0;
+        }
+
+        .file-list a {
+            color: #388e3c;
+            text-decoration: none;
+        }
+
+        .file-list a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⬆️</div>
+        <h1>Share Your File</h1>
+
+        <input type="file" id="fileInput" required>
+        <button id="uploadButton">Upload</button>
+
+        <div id="success" class="message success">
+            ✅ File uploaded successfully!
+            <br>
+            <a id="downloadLink" class="download-link" target="_blank">Download your file</a>
+        </div>
+
+        <div id="error" class="message error">
+            ⚠ <span id="errorMessage">An error occurred</span>
+        </div>
+
+        <div class="file-list" id="fileList">
+            <h3>Uploaded Files</h3>
+            <ul id="fileListItems"></ul>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const successDiv = document.getElementById('success');
+        const errorDiv = document.getElementById('error');
+        const downloadLink = document.getElementById('downloadLink');
+        const errorMessage = document.getElementById('errorMessage');
+        const fileListItems = document.getElementById('fileListItems');
+
+        // تحميل قائمة الملفات عند تحميل الصفحة
+        fetchFiles();
+
+        uploadButton.addEventListener('click', async () => {
+            if (!fileInput.files.length) {
+                showError('يرجى اختيار ملف للرفع');
+                return;
+            }
+
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'جارٍ الرفع...';
+            hideMessages();
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.download_url) {
+                    successDiv.style.display = 'block';
+                    downloadLink.href = result.download_url;
+                    downloadLink.textContent = 'تحميل ملفك';
+                    fetchFiles(); // تحديث قائمة الملفات بعد الرفع
+                } else {
+                    showError(result.error || 'فشل رفع الملف');
+                }
+            } catch (err) {
+                showError('حدث خطأ في الشبكة');
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Upload';
+                fileInput.value = '';
+            }
+        });
+
+        async function fetchFiles() {
+            try {
+                const response = await fetch('/files');
+                const result = await response.json();
+
+                if (response.ok) {
+                    fileListItems.innerHTML = '';
+                    if (result.files && result.files.length > 0) {
+                        result.files.forEach(file => {
+                            const li = document.createElement('li');
+                            const a = document.createElement('a');
+                            a.href = file.url;
+                            a.textContent = file.name;
+                            a.target = '_blank';
+                            li.appendChild(a);
+                            fileListItems.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = 'لا توجد ملفات مرفوعة';
+                        fileListItems.appendChild(li);
+                    }
+                } else {
+                    showError(result.error || 'فشل جلب قائمة الملفات');
+                }
+            } catch (err) {
+                showError('حدث خطأ أثناء جلب قائمة الملفات');
+            }
+        }
+
+        function showError(message) {
+            errorDiv.style.display = 'block';
+            errorMessage.textContent = message;
+        }
+
+        function hideMessages() {
+            successDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
